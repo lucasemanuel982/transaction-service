@@ -1,0 +1,68 @@
+// Schema do Banco de Dados - Transaction Service
+// PostgreSQL Database Schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// TABELA: Transaction
+// ============================================
+// Armazena transações/transferências entre usuários
+model Transaction {
+  id             String   @id @default(uuid())
+  senderUserId   String   @map("sender_user_id") @db.Uuid
+  receiverUserId String   @map("receiver_user_id") @db.Uuid
+  amount         Decimal  @db.Decimal(15, 2) // Suporta valores grandes com 2 casas decimais
+  description    String?  @db.VarChar(500)
+  status         String   @default("PENDING") @db.VarChar(50) // PENDING, PROCESSING, COMPLETED, FAILED
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  // Relacionamentos
+  auditLogs AuditLog[]
+
+  @@index([senderUserId])
+  @@index([receiverUserId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([senderUserId, receiverUserId])
+  @@map("transactions")
+}
+
+// ============================================
+// TABELA: AuditLog
+// ============================================
+// Armazena logs de auditoria de ações realizadas nas transações
+model AuditLog {
+  id            String   @id @default(uuid())
+  userId        String?  @map("user_id") @db.Uuid
+  userEmail     String?  @map("user_email") @db.VarChar(255)
+  action        String   @db.VarChar(100) // Ex: "CREATE", "UPDATE", "VIEW", etc.
+  entity        String   @db.VarChar(100) // Ex: "Transaction"
+  entityId      String?  @map("entity_id") @db.Uuid
+  changes       Json?    // Armazena estado antes/depois (JSONB)
+  ipAddress     String?  @map("ip_address") @db.VarChar(45) // Suporta IPv6
+  userAgent     String?  @map("user_agent") @db.Text
+  timestamp     DateTime @default(now())
+  result        String   @db.VarChar(50) // "SUCCESS", "FAILURE", "ERROR"
+  errorMessage  String?  @map("error_message") @db.Text
+  correlationId String?  @map("correlation_id") @db.VarChar(100)
+
+  // Relacionamento (opcional)
+  transaction Transaction? @relation(fields: [entityId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([entity, entityId])
+  @@index([action])
+  @@index([timestamp])
+  @@index([correlationId])
+  @@map("audit_logs")
+}
+
+
