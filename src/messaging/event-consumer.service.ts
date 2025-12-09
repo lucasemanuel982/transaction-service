@@ -11,9 +11,12 @@ export class EventConsumerService implements OnModuleInit {
 
   async onModuleInit() {
     // Aguarda um pouco para garantir que o RabbitMQ está pronto
-    setTimeout(() => {
-      this.startConsumingBankingDetailsUpdated();
-    }, 2000);
+    await new Promise((resolve) => {
+      setTimeout(() => {
+        void this.startConsumingBankingDetailsUpdated();
+        resolve(undefined);
+      }, 2000);
+    });
   }
 
   /**
@@ -30,8 +33,9 @@ export class EventConsumerService implements OnModuleInit {
     try {
       await this.rabbitMQService.consumeQueue<BankingDetailsUpdatedEvent>(
         RABBITMQ_CONFIG.QUEUES.BANKING_DETAILS_UPDATED,
-        async (event) => {
-          await this.handleBankingDetailsUpdated(event);
+        (event) => {
+          this.handleBankingDetailsUpdated(event);
+          return Promise.resolve();
         },
       );
     } catch (error) {
@@ -45,17 +49,13 @@ export class EventConsumerService implements OnModuleInit {
   /**
    * Processa evento de atualização de dados bancários
    */
-  private async handleBankingDetailsUpdated(
-    event: BankingDetailsUpdatedEvent,
-  ): Promise<void> {
+  private handleBankingDetailsUpdated(event: BankingDetailsUpdatedEvent): void {
     this.logger.log(
       `Evento recebido: banking-details.updated para usuário ${event.userId}`,
     );
 
-    // Aqui você pode implementar a lógica de processamento
-    // Por exemplo, atualizar cache interno, invalidar dados, etc.
     try {
-      // TODO: Implementar lógica de processamento do evento
+      // Será implementado posteriormente
       this.logger.debug('Evento processado com sucesso', event);
     } catch (error) {
       this.logger.error(
