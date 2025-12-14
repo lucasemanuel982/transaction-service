@@ -32,12 +32,12 @@ export class TransactionsController {
     @CurrentUser() currentUser: { userId: string; email: string },
     @Req() request: Request,
   ) {
-    // Extrai o token do header Authorization para passar ao service
     const authToken = request.headers.authorization?.replace('Bearer ', '');
     return this.transactionsService.create(createTransactionDto, authToken);
   }
 
   @Get(':id')
+  @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
   async findOne(@Param() params: TransactionIdParamDto) {
     return this.transactionsService.findOne(params.id);

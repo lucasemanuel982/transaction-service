@@ -12,6 +12,7 @@ describe('TransactionsService', () => {
   const mockPrismaService = {
     transaction: {
       create: jest.fn(),
+      findUnique: jest.fn(),
     },
     accountBalance: {
       findUnique: jest.fn(),
@@ -302,6 +303,124 @@ describe('TransactionsService', () => {
       const result = await service.create(mockCreateTransactionDto, 'token');
 
       expect(result).toEqual(mockTransaction);
+    });
+  });
+
+  describe('findOne', () => {
+    const mockTransaction = {
+      id: '550e8400-e29b-41d4-a716-446655440000',
+      senderUserId: 'sender-uuid',
+      receiverUserId: 'receiver-uuid',
+      amount: 100.5,
+      description: 'Test transaction',
+      status: 'COMPLETED',
+      createdAt: new Date('2024-01-01T00:00:00.000Z'),
+      updatedAt: new Date('2024-01-01T00:00:00.000Z'),
+    };
+
+    it('deve buscar uma transação com sucesso', async () => {
+      mockPrismaService.transaction.findUnique = jest
+        .fn()
+        .mockResolvedValue(mockTransaction);
+
+      const result = await service.findOne(
+        '550e8400-e29b-41d4-a716-446655440000',
+      );
+
+      expect(result).toEqual(mockTransaction);
+      expect(mockPrismaService.transaction.findUnique).toHaveBeenCalledWith({
+        where: { id: '550e8400-e29b-41d4-a716-446655440000' },
+      });
+      expect(mockPrismaService.transaction.findUnique).toHaveBeenCalledTimes(1);
+    });
+
+    it('deve lançar NotFoundException quando transação não é encontrada', async () => {
+      mockPrismaService.transaction.findUnique = jest
+        .fn()
+        .mockResolvedValue(null);
+
+      await expect(
+        service.findOne('550e8400-e29b-41d4-a716-446655440000'),
+      ).rejects.toThrow(NotFoundException);
+
+      expect(mockPrismaService.transaction.findUnique).toHaveBeenCalledWith({
+        where: { id: '550e8400-e29b-41d4-a716-446655440000' },
+      });
+    });
+
+    it('deve lançar BadRequestException quando ID é vazio', async () => {
+      await expect(service.findOne('')).rejects.toThrow(BadRequestException);
+      expect(mockPrismaService.transaction.findUnique).not.toHaveBeenCalled();
+    });
+
+    it('deve lançar BadRequestException quando ID é apenas espaços', async () => {
+      await expect(service.findOne('   ')).rejects.toThrow(BadRequestException);
+      expect(mockPrismaService.transaction.findUnique).not.toHaveBeenCalled();
+    });
+
+    it('deve lançar BadRequestException quando ID não é uma string', async () => {
+      await expect(service.findOne(null as unknown as string)).rejects.toThrow(
+        BadRequestException,
+      );
+      expect(mockPrismaService.transaction.findUnique).not.toHaveBeenCalled();
+    });
+
+    it('deve lançar BadRequestException quando ID não é um UUID válido', async () => {
+      await expect(service.findOne('invalid-uuid')).rejects.toThrow(
+        BadRequestException,
+      );
+      expect(mockPrismaService.transaction.findUnique).not.toHaveBeenCalled();
+    });
+
+    it('deve remover espaços em branco do ID antes de buscar', async () => {
+      mockPrismaService.transaction.findUnique = jest
+        .fn()
+        .mockResolvedValue(mockTransaction);
+
+      const result = await service.findOne(
+        '  550e8400-e29b-41d4-a716-446655440000  ',
+      );
+
+      expect(result).toEqual(mockTransaction);
+      expect(mockPrismaService.transaction.findUnique).toHaveBeenCalledWith({
+        where: { id: '550e8400-e29b-41d4-a716-446655440000' },
+      });
+    });
+
+    it('deve lançar InternalServerErrorException quando ocorre erro no banco', async () => {
+      mockPrismaService.transaction.findUnique = jest
+        .fn()
+        .mockRejectedValue(new Error('Database error'));
+
+      await expect(
+        service.findOne('550e8400-e29b-41d4-a716-446655440000'),
+      ).rejects.toThrow('Erro ao buscar transação');
+
+      expect(mockPrismaService.transaction.findUnique).toHaveBeenCalled();
+    });
+
+    it('deve retornar transação com tipos corretos', async () => {
+      mockPrismaService.transaction.findUnique = jest
+        .fn()
+        .mockResolvedValue(mockTransaction);
+
+      const result = await service.findOne(
+        '550e8400-e29b-41d4-a716-446655440000',
+      );
+
+      expect(result).toHaveProperty('id');
+      expect(result).toHaveProperty('senderUserId');
+      expect(result).toHaveProperty('receiverUserId');
+      expect(result).toHaveProperty('amount');
+      expect(result).toHaveProperty('description');
+      expect(result).toHaveProperty('status');
+      expect(result).toHaveProperty('createdAt');
+      expect(result).toHaveProperty('updatedAt');
+      expect(typeof result.id).toBe('string');
+      expect(typeof result.senderUserId).toBe('string');
+      expect(typeof result.receiverUserId).toBe('string');
+      expect(result.createdAt).toBeInstanceOf(Date);
+      expect(result.updatedAt).toBeInstanceOf(Date);
     });
   });
 
