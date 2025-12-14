@@ -9,6 +9,10 @@ import { PrismaService } from '../database/prisma.service';
 import { UserClientService } from '../clients/user-client.service';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { EventPublisherService } from '../messaging/event-publisher.service';
+import {
+  TransactionType,
+  TransactionStatus,
+} from './dto/find-transactions-query.dto';
 
 @Injectable()
 export class TransactionsService {
@@ -249,34 +253,121 @@ export class TransactionsService {
   }
 
   /**
-   * Lista transações de um usuário
+   * Lista transações de um usuário com paginação e filtros opcionais
    */
-  async findByUser(userId: string, page = 1, limit = 10) {
-    if (!userId || typeof userId !== 'string' || userId.trim() === '') {
-      throw new BadRequestException('ID do usuário é obrigatório');
+  async findByUser(
+    userId: string,
+    page: number = 1,
+    limit: number = 10,
+    type?: TransactionType,
+    status?: TransactionStatus,
+  ): Promise<{
+    data: Array<{
+      id: string;
+      senderUserId: string;
+      receiverUserId: string;
+      amount: number;
+      description: string | null;
+      status: string;
+      createdAt: Date;
+      updatedAt: Date;
+    }>;
+    pagination: {
+      page: number;
+      limit: number;
+      total: number;
+      totalPages: number;
+    };
+  }> {
+    if (!userId || typeof userId !== 'string') {
+      throw new BadRequestException('ID do usuário deve ser uma string');
+    }
+
+    const trimmedUserId = userId.trim();
+    if (trimmedUserId === '') {
+      throw new BadRequestException('ID do usuário não pode estar vazio');
+    }
+
+    const uuidRegex =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(trimmedUserId)) {
+      throw new BadRequestException('ID do usuário deve ser um UUID válido');
+    }
+
+    if (!Number.isInteger(page) || page < 1) {
+      throw new BadRequestException(
+        'Página deve ser um número inteiro maior que zero',
+      );
+    }
+
+    if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
+      throw new BadRequestException(
+        'Limite deve ser um número inteiro entre 1 e 100',
+      );
     }
 
     const skip = (page - 1) * limit;
 
+    const whereConditions: Array<{
+      senderUserId?: string;
+      receiverUserId?: string;
+      status?: string;
+    }> = [];
+
+    if (type === TransactionType.SENT) {
+      whereConditions.push({ senderUserId: trimmedUserId });
+    } else if (type === TransactionType.RECEIVED) {
+      whereConditions.push({ receiverUserId: trimmedUserId });
+    } else {
+      // ALL ou não especificado
+      whereConditions.push(
+        { senderUserId: trimmedUserId },
+        { receiverUserId: trimmedUserId },
+      );
+    }
+
+    const whereClause: {
+      OR: Array<{
+        senderUserId?: string;
+        receiverUserId?: string;
+        status?: string;
+      }>;
+      status?: string;
+    } = {
+      OR: whereConditions,
+    };
+
+    if (status) {
+      whereClause.status = status;
+    }
+
     try {
       const [transactions, total] = await Promise.all([
         this.prisma.transaction.findMany({
-          where: {
-            OR: [{ senderUserId: userId }, { receiverUserId: userId }],
-          },
+          where: whereClause,
           orderBy: { createdAt: 'desc' },
           skip,
           take: limit,
         }),
         this.prisma.transaction.count({
-          where: {
-            OR: [{ senderUserId: userId }, { receiverUserId: userId }],
-          },
+          where: whereClause,
         }),
       ]);
 
+      // Converter tipos corretamente
+      const formattedTransactions = transactions.map((transaction) => ({
+        id: transaction.id,
+        senderUserId: transaction.senderUserId,
+        receiverUserId: transaction.receiverUserId,
+        amount: Number(transaction.amount),
+        description: transaction.description,
+        status: transaction.status,
+        createdAt: transaction.createdAt,
+        updatedAt: transaction.updatedAt,
+      }));
+
       return {
-        data: transactions,
+        data: formattedTransactions,
         pagination: {
           page,
           limit,
@@ -285,6 +376,9 @@ export class TransactionsService {
         },
       };
     } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
       this.logger.error('Erro ao listar transações do usuário:', error);
       throw new InternalServerErrorException('Erro ao listar transações');
     }

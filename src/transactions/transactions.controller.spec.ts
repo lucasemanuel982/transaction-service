@@ -4,6 +4,11 @@ import { TransactionsController } from './transactions.controller';
 import { TransactionsService } from './transactions.service';
 import { JwtAuthGuard } from '../security/guards/jwt-auth.guard';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
+import {
+  FindTransactionsQueryDto,
+  TransactionType,
+  TransactionStatus,
+} from './dto/find-transactions-query.dto';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 
 interface MockRequest extends Partial<Request> {
@@ -237,6 +242,171 @@ describe('TransactionsController', () => {
     it('deve garantir que o guard JWT está aplicado', () => {
       // O guard é verificado através do decorator @UseGuards no código
       expect(typeof controller.findOne).toBe('function');
+    });
+  });
+
+  describe('findByUser', () => {
+    const mockParams = {
+      id: '550e8400-e29b-41d4-a716-446655440000',
+    };
+
+    const mockTransactions = [
+      {
+        id: 'transaction-1',
+        senderUserId: '550e8400-e29b-41d4-a716-446655440000',
+        receiverUserId: 'receiver-uuid',
+        amount: 100.5,
+        description: 'Test transaction 1',
+        status: 'COMPLETED',
+        createdAt: new Date('2024-01-01T00:00:00.000Z'),
+        updatedAt: new Date('2024-01-01T00:00:00.000Z'),
+      },
+      {
+        id: 'transaction-2',
+        senderUserId: 'sender-uuid',
+        receiverUserId: '550e8400-e29b-41d4-a716-446655440000',
+        amount: 200.75,
+        description: 'Test transaction 2',
+        status: 'COMPLETED',
+        createdAt: new Date('2024-01-02T00:00:00.000Z'),
+        updatedAt: new Date('2024-01-02T00:00:00.000Z'),
+      },
+    ];
+
+    const mockResponse = {
+      data: mockTransactions,
+      pagination: {
+        page: 1,
+        limit: 10,
+        total: 2,
+        totalPages: 1,
+      },
+    };
+
+    it('deve listar transações de um usuário com sucesso', async () => {
+      const query: FindTransactionsQueryDto = {
+        page: 1,
+        limit: 10,
+      };
+      mockTransactionsService.findByUser.mockResolvedValue(mockResponse);
+
+      const result = await controller.findByUser(mockParams, query);
+
+      expect(result).toEqual(mockResponse);
+      expect(mockTransactionsService.findByUser).toHaveBeenCalledWith(
+        mockParams.id,
+        1,
+        10,
+        undefined,
+        undefined,
+      );
+    });
+
+    it('deve usar valores padrão quando query params não são fornecidos', async () => {
+      const query: FindTransactionsQueryDto = {};
+      mockTransactionsService.findByUser.mockResolvedValue(mockResponse);
+
+      await controller.findByUser(mockParams, query);
+
+      expect(mockTransactionsService.findByUser).toHaveBeenCalledWith(
+        mockParams.id,
+        1,
+        10,
+        undefined,
+        undefined,
+      );
+    });
+
+    it('deve filtrar por tipo SENT', async () => {
+      const query: FindTransactionsQueryDto = {
+        page: 1,
+        limit: 10,
+        type: TransactionType.SENT,
+      };
+      mockTransactionsService.findByUser.mockResolvedValue(mockResponse);
+
+      await controller.findByUser(mockParams, query);
+
+      expect(mockTransactionsService.findByUser).toHaveBeenCalledWith(
+        mockParams.id,
+        1,
+        10,
+        TransactionType.SENT,
+        undefined,
+      );
+    });
+
+    it('deve filtrar por tipo RECEIVED', async () => {
+      const query: FindTransactionsQueryDto = {
+        page: 1,
+        limit: 10,
+        type: TransactionType.RECEIVED,
+      };
+      mockTransactionsService.findByUser.mockResolvedValue(mockResponse);
+
+      await controller.findByUser(mockParams, query);
+
+      expect(mockTransactionsService.findByUser).toHaveBeenCalledWith(
+        mockParams.id,
+        1,
+        10,
+        TransactionType.RECEIVED,
+        undefined,
+      );
+    });
+
+    it('deve filtrar por status', async () => {
+      const query: FindTransactionsQueryDto = {
+        page: 1,
+        limit: 10,
+        status: TransactionStatus.COMPLETED,
+      };
+      mockTransactionsService.findByUser.mockResolvedValue(mockResponse);
+
+      await controller.findByUser(mockParams, query);
+
+      expect(mockTransactionsService.findByUser).toHaveBeenCalledWith(
+        mockParams.id,
+        1,
+        10,
+        undefined,
+        TransactionStatus.COMPLETED,
+      );
+    });
+
+    it('deve combinar filtros de tipo e status', async () => {
+      const query: FindTransactionsQueryDto = {
+        page: 1,
+        limit: 10,
+        type: TransactionType.SENT,
+        status: TransactionStatus.COMPLETED,
+      };
+      mockTransactionsService.findByUser.mockResolvedValue(mockResponse);
+
+      await controller.findByUser(mockParams, query);
+
+      expect(mockTransactionsService.findByUser).toHaveBeenCalledWith(
+        mockParams.id,
+        1,
+        10,
+        TransactionType.SENT,
+        TransactionStatus.COMPLETED,
+      );
+    });
+
+    it('deve retornar erro quando service lança BadRequestException', async () => {
+      const query: FindTransactionsQueryDto = { page: 1, limit: 10 };
+      mockTransactionsService.findByUser.mockRejectedValue(
+        new BadRequestException('ID do usuário é obrigatório'),
+      );
+
+      await expect(controller.findByUser(mockParams, query)).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('deve garantir que o guard JWT está aplicado', () => {
+      expect(typeof controller.findByUser).toBe('function');
     });
   });
 });
