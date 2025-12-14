@@ -11,6 +11,15 @@ import {
 } from '../src/messaging/interfaces/events.interface';
 import { randomUUID } from 'crypto';
 
+/**
+ * Helper function to create a delay promise
+ */
+const delay = (ms: number): Promise<void> => {
+  return new Promise((resolve) => {
+    setTimeout(() => resolve(), ms);
+  });
+};
+
 describe('Messaging Integration Tests (e2e)', () => {
   let app: INestApplication;
   let rabbitMQService: RabbitMQService;
@@ -38,10 +47,9 @@ describe('Messaging Integration Tests (e2e)', () => {
       EventValidatorService,
     );
 
-    // Aguarda conexão com RabbitMQ
     let attempts = 0;
     while (!rabbitMQService.isConnected() && attempts < 10) {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      await delay(1000);
       attempts++;
     }
 
@@ -181,7 +189,6 @@ describe('Messaging Integration Tests (e2e)', () => {
         source: 'transaction-service',
       };
 
-      // O validador deve rejeitar antes da publicação
       const isValid =
         eventValidatorService.validateTransactionCompleted(invalidEvent);
       expect(isValid).toBe(false);
@@ -201,9 +208,9 @@ describe('Messaging Integration Tests (e2e)', () => {
         source: 'user-service',
       };
 
-      await rabbitMQService.publishEvent('user.banking-details.updated', event);
+      rabbitMQService.publishEvent('user.banking-details.updated', event);
 
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      await delay(2000);
 
       expect(eventValidatorService.validateBankingDetailsUpdated(event)).toBe(
         true,
