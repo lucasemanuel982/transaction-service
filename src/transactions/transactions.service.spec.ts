@@ -60,6 +60,9 @@ describe('TransactionsService', () => {
 
   afterEach(() => {
     jest.clearAllMocks();
+    mockUserClientService.validateUserExists.mockReset();
+    mockPrismaService.$transaction.mockReset();
+    mockEventPublisherService.publishTransactionCompleted.mockReset();
   });
 
   describe('create', () => {
@@ -98,6 +101,10 @@ describe('TransactionsService', () => {
             userId: 'sender-uuid',
             balance: 500,
           };
+          const mockReceiverBalance = {
+            userId: 'receiver-uuid',
+            balance: 0,
+          };
           const mockTx = {
             transaction: {
               create: jest.fn().mockResolvedValue(mockTransaction),
@@ -106,7 +113,8 @@ describe('TransactionsService', () => {
               findUnique: jest
                 .fn()
                 .mockResolvedValueOnce(mockSenderBalance)
-                .mockResolvedValueOnce({ userId: 'receiver-uuid', balance: 0 }),
+                .mockResolvedValueOnce(mockReceiverBalance)
+                .mockResolvedValueOnce(mockSenderBalance),
               create: jest.fn(),
               update: jest.fn().mockResolvedValue({}),
             },
@@ -176,6 +184,7 @@ describe('TransactionsService', () => {
         service.create(mockCreateTransactionDto, 'token'),
       ).rejects.toThrow(NotFoundException);
       expect(mockUserClientService.validateUserExists).toHaveBeenCalledTimes(2);
+      expect(mockPrismaService.$transaction).not.toHaveBeenCalled();
     });
 
     it('deve criar transação sem descrição quando description não é fornecida', async () => {
@@ -185,9 +194,24 @@ describe('TransactionsService', () => {
       };
 
       mockUserClientService.validateUserExists.mockResolvedValue(true);
+      const mockSenderBalance = {
+        userId: 'sender-uuid',
+        balance: 500,
+      };
+      const mockReceiverBalance = {
+        userId: 'receiver-uuid',
+        balance: 0,
+      };
       mockPrismaService.$transaction.mockImplementation(
         async (
-          callback: (tx: { transaction: { create: jest.Mock } }) => unknown,
+          callback: (tx: {
+            transaction: { create: jest.Mock };
+            accountBalance: {
+              findUnique: jest.Mock;
+              create: jest.Mock;
+              update: jest.Mock;
+            };
+          }) => unknown,
         ) => {
           const mockTx = {
             transaction: {
@@ -195,6 +219,15 @@ describe('TransactionsService', () => {
                 ...mockTransaction,
                 description: null,
               }),
+            },
+            accountBalance: {
+              findUnique: jest
+                .fn()
+                .mockResolvedValueOnce(mockSenderBalance)
+                .mockResolvedValueOnce(mockReceiverBalance) // ensureAccountBalanceExists(receiver)
+                .mockResolvedValueOnce(mockSenderBalance), // Verificação de saldo do sender
+              create: jest.fn(),
+              update: jest.fn().mockResolvedValue({}),
             },
           };
           return callback(mockTx) as Promise<typeof mockTransaction>;
@@ -211,13 +244,37 @@ describe('TransactionsService', () => {
 
     it('deve continuar mesmo se publicação de evento falhar', async () => {
       mockUserClientService.validateUserExists.mockResolvedValue(true);
+      const mockSenderBalance = {
+        userId: 'sender-uuid',
+        balance: 500,
+      };
+      const mockReceiverBalance = {
+        userId: 'receiver-uuid',
+        balance: 0,
+      };
       mockPrismaService.$transaction.mockImplementation(
         async (
-          callback: (tx: { transaction: { create: jest.Mock } }) => unknown,
+          callback: (tx: {
+            transaction: { create: jest.Mock };
+            accountBalance: {
+              findUnique: jest.Mock;
+              create: jest.Mock;
+              update: jest.Mock;
+            };
+          }) => unknown,
         ) => {
           const mockTx = {
             transaction: {
               create: jest.fn().mockResolvedValue(mockTransaction),
+            },
+            accountBalance: {
+              findUnique: jest
+                .fn()
+                .mockResolvedValueOnce(mockSenderBalance)
+                .mockResolvedValueOnce(mockReceiverBalance)
+                .mockResolvedValueOnce(mockSenderBalance),
+              create: jest.fn(),
+              update: jest.fn().mockResolvedValue({}),
             },
           };
           return callback(mockTx) as Promise<typeof mockTransaction>;
@@ -289,13 +346,14 @@ describe('TransactionsService', () => {
             accountBalance: {
               findUnique: jest
                 .fn()
-                .mockResolvedValueOnce(null) // Primeira chamada: saldo não existe
-                .mockResolvedValueOnce(null) // Segunda chamada: saldo não existe
-                .mockResolvedValueOnce({ userId: 'sender-uuid', balance: 0 }) // Após criar
+                .mockResolvedValueOnce(null)
+                .mockResolvedValueOnce(null)
+                .mockResolvedValueOnce({ userId: 'sender-uuid', balance: 500 })
                 .mockResolvedValueOnce({ userId: 'receiver-uuid', balance: 0 }),
               create: jest
                 .fn()
-                .mockResolvedValue({ userId: 'sender-uuid', balance: 0 }),
+                .mockResolvedValueOnce({ userId: 'sender-uuid', balance: 0 })
+                .mockResolvedValueOnce({ userId: 'receiver-uuid', balance: 0 }),
               update: jest.fn().mockResolvedValue({}),
             },
           };
