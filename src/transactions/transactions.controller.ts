@@ -9,24 +9,32 @@ import {
   HttpStatus,
   ParseIntPipe,
   DefaultValuePipe,
+  UseGuards,
+  Req,
 } from '@nestjs/common';
+import type { Request } from 'express';
 import { TransactionsService } from './transactions.service';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { TransactionIdParamDto } from './dto/transaction-id-param.dto';
 import { UserIdParamDto } from './dto/user-id-param.dto';
 import { CurrentUser } from '../security/decorators/current-user.decorator';
+import { JwtAuthGuard } from '../security/guards/jwt-auth.guard';
 
 @Controller('api/transactions')
 export class TransactionsController {
   constructor(private readonly transactionsService: TransactionsService) {}
 
   @Post()
+  @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.CREATED)
   async create(
     @Body() createTransactionDto: CreateTransactionDto,
-    @CurrentUser() currentUser?: { userId: string; email: string },
+    @CurrentUser() currentUser: { userId: string; email: string },
+    @Req() request: Request,
   ) {
-    return this.transactionsService.create(createTransactionDto);
+    // Extrai o token do header Authorization para passar ao service
+    const authToken = request.headers.authorization?.replace('Bearer ', '');
+    return this.transactionsService.create(createTransactionDto, authToken);
   }
 
   @Get(':id')
@@ -43,5 +51,12 @@ export class TransactionsController {
     @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
   ) {
     return this.transactionsService.findByUser(params.id, page, limit);
+  }
+
+  @Get('balance/:userId')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  async getBalance(@Param('userId') userId: string) {
+    return this.transactionsService.getBalance(userId);
   }
 }

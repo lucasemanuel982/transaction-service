@@ -22,7 +22,6 @@ export class TransactionsService {
 
   /**
    * Cria uma nova transação
-   * Valida usuários e cria registro no banco
    */
   async create(createTransactionDto: CreateTransactionDto, authToken?: string) {
     const { senderUserId, receiverUserId, amount, description } =
@@ -31,6 +30,18 @@ export class TransactionsService {
     if (senderUserId === receiverUserId) {
       throw new BadRequestException(
         'O remetente e o destinatário não podem ser o mesmo usuário',
+      );
+    }
+
+    if (amount <= 0) {
+      throw new BadRequestException(
+        'O valor da transação deve ser maior que zero',
+      );
+    }
+
+    if (description && description.length > 500) {
+      throw new BadRequestException(
+        'A descrição não pode exceder 500 caracteres',
       );
     }
 
@@ -68,22 +79,107 @@ export class TransactionsService {
     }
 
     try {
-      const transaction = await this.prisma.transaction.create({
-        data: {
+      const transaction = await this.prisma.$transaction(async (tx) => {
+        await this.ensureAccountBalanceExists(
+          tx as unknown as Parameters<
+            typeof this.ensureAccountBalanceExists
+          >[0],
           senderUserId,
+        );
+        await this.ensureAccountBalanceExists(
+          tx as unknown as Parameters<
+            typeof this.ensureAccountBalanceExists
+          >[0],
           receiverUserId,
-          amount,
-          description: description || null,
-          status: 'PENDING',
-        },
+        );
+
+        const senderBalance = await (
+          tx as unknown as {
+            accountBalance: {
+              findUnique: (args: { where: { userId: string } }) => Promise<{
+                userId: string;
+                balance: number | string;
+              } | null>;
+            };
+          }
+        ).accountBalance.findUnique({
+          where: { userId: senderUserId },
+        });
+
+        if (!senderBalance) {
+          throw new NotFoundException(
+            `Saldo não encontrado para usuário ${senderUserId}`,
+          );
+        }
+
+        const currentBalance = Number(senderBalance.balance);
+        if (currentBalance < amount) {
+          throw new BadRequestException(
+            `Saldo insuficiente. Saldo atual: ${currentBalance.toFixed(2)}, Valor solicitado: ${amount}`,
+          );
+        }
+
+        const txWithBalance = tx as unknown as {
+          accountBalance: {
+            update: (args: {
+              where: { userId: string };
+              data: { balance: { decrement?: number; increment?: number } };
+            }) => Promise<{ userId: string; balance: number | string }>;
+          };
+        };
+        await Promise.all([
+          txWithBalance.accountBalance.update({
+            where: { userId: senderUserId },
+            data: { balance: { decrement: amount } },
+          }),
+          txWithBalance.accountBalance.update({
+            where: { userId: receiverUserId },
+            data: { balance: { increment: amount } },
+          }),
+        ]);
+
+        const newTransaction = await tx.transaction.create({
+          data: {
+            senderUserId,
+            receiverUserId,
+            amount,
+            description: description || null,
+            status: 'COMPLETED', // Status inicial como COMPLETED após validações
+          },
+        });
+
+        return newTransaction;
       });
 
       this.logger.log(
-        `Transação ${transaction.id} criada com sucesso (${senderUserId} -> ${receiverUserId})`,
+        `Transação ${transaction.id} criada com sucesso (${senderUserId} -> ${receiverUserId}, valor: ${amount})`,
       );
+
+      try {
+        await this.eventPublisher.publishTransactionCompleted(
+          transaction.id,
+          senderUserId,
+          receiverUserId,
+          Number(transaction.amount),
+        );
+        this.logger.log(
+          `Evento de notificação publicado para transação ${transaction.id}`,
+        );
+      } catch (eventError) {
+        this.logger.error(
+          `Erro ao publicar evento de notificação para transação ${transaction.id}:`,
+          eventError,
+        );
+      }
 
       return transaction;
     } catch (error) {
+      if (
+        error instanceof NotFoundException ||
+        error instanceof BadRequestException
+      ) {
+        throw error;
+      }
       this.logger.error('Erro ao criar transação no banco de dados:', error);
       throw new InternalServerErrorException(
         'Erro ao criar transação no banco de dados',
@@ -157,6 +253,89 @@ export class TransactionsService {
     } catch (error) {
       this.logger.error('Erro ao listar transações do usuário:', error);
       throw new InternalServerErrorException('Erro ao listar transações');
+    }
+  }
+
+  /**
+   * Garante que uma conta de saldo existe para o usuário
+   * Cria com saldo inicial 0 se não existir
+   */
+  private async ensureAccountBalanceExists(
+    tx: {
+      accountBalance: {
+        findUnique: (args: { where: { userId: string } }) => Promise<{
+          userId: string;
+          balance: number | string;
+        } | null>;
+        create: (args: {
+          data: { userId: string; balance: number };
+        }) => Promise<{ userId: string; balance: number | string }>;
+      };
+    },
+    userId: string,
+  ): Promise<void> {
+    const existingBalance = await tx.accountBalance.findUnique({
+      where: { userId },
+    });
+
+    if (!existingBalance) {
+      await tx.accountBalance.create({
+        data: {
+          userId,
+          balance: 0,
+        },
+      });
+      this.logger.log(
+        `Conta de saldo criada para usuário ${userId} com saldo inicial 0`,
+      );
+    }
+  }
+
+  /**
+   * Busca o saldo de um usuário
+   */
+  async getBalance(
+    userId: string,
+  ): Promise<{ userId: string; balance: number }> {
+    if (!userId || typeof userId !== 'string' || userId.trim() === '') {
+      throw new BadRequestException('ID do usuário é obrigatório');
+    }
+
+    try {
+      const prismaWithBalance = this.prisma as unknown as {
+        accountBalance: {
+          findUnique: (args: {
+            where: { userId: string };
+          }) => Promise<{ userId: string; balance: number | string } | null>;
+          create: (args: {
+            data: { userId: string; balance: number };
+          }) => Promise<{ userId: string; balance: number | string }>;
+        };
+      };
+
+      let accountBalance = await prismaWithBalance.accountBalance.findUnique({
+        where: { userId },
+      });
+
+      if (!accountBalance) {
+        accountBalance = await prismaWithBalance.accountBalance.create({
+          data: {
+            userId,
+            balance: 0,
+          },
+        });
+        this.logger.log(
+          `Conta de saldo criada para usuário ${userId} com saldo inicial 0`,
+        );
+      }
+
+      return {
+        userId: accountBalance.userId,
+        balance: Number(accountBalance.balance),
+      };
+    } catch (error) {
+      this.logger.error(`Erro ao buscar saldo do usuário ${userId}:`, error);
+      throw new InternalServerErrorException('Erro ao buscar saldo');
     }
   }
 }
