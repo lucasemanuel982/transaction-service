@@ -10,9 +10,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ============================================
 // TABELA: Transaction
-// ============================================
 // Armazena transações/transferências entre usuários
 model Transaction {
   id             String   @id @default(uuid())
@@ -35,9 +33,7 @@ model Transaction {
   @@map("transactions")
 }
 
-// ============================================
 // TABELA: AuditLog
-// ============================================
 // Armazena logs de auditoria de ações realizadas nas transações
 model AuditLog {
   id            String   @id @default(uuid())
@@ -64,5 +60,4 @@ model AuditLog {
   @@index([correlationId])
   @@map("audit_logs")
 }
-
 

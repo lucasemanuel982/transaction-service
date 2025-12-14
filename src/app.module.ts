@@ -7,9 +7,16 @@ import { MessagingModule } from './messaging/messaging.module';
 import { EventPublisherService } from './messaging/event-publisher.service';
 import { EventConsumerService } from './messaging/event-consumer.service';
 import { SecurityModule } from './security/security.module';
+import { DatabaseModule } from './database/database.module';
+import { TransactionsModule } from './transactions/transactions.module';
 
 @Module({
-  imports: [MessagingModule, SecurityModule],
+  imports: [
+    DatabaseModule,
+    MessagingModule,
+    SecurityModule,
+    TransactionsModule,
+  ],
   controllers: [AppController],
   providers: [
     AppService,
