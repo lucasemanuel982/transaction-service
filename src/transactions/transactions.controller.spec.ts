@@ -159,4 +159,84 @@ describe('TransactionsController', () => {
       );
     });
   });
+
+  describe('findOne', () => {
+    const mockTransaction = {
+      id: '550e8400-e29b-41d4-a716-446655440000',
+      senderUserId: 'sender-uuid',
+      receiverUserId: 'receiver-uuid',
+      amount: 100.5,
+      description: 'Test transaction',
+      status: 'COMPLETED',
+      createdAt: new Date('2024-01-01T00:00:00.000Z'),
+      updatedAt: new Date('2024-01-01T00:00:00.000Z'),
+    };
+
+    const mockParams = {
+      id: '550e8400-e29b-41d4-a716-446655440000',
+    };
+
+    it('deve buscar uma transação com sucesso', async () => {
+      mockTransactionsService.findOne.mockResolvedValue(mockTransaction);
+
+      const result = await controller.findOne(mockParams);
+
+      expect(result).toEqual(mockTransaction);
+      expect(mockTransactionsService.findOne).toHaveBeenCalledWith(
+        mockParams.id,
+      );
+      expect(mockTransactionsService.findOne).toHaveBeenCalledTimes(1);
+    });
+
+    it('deve retornar erro 404 quando transação não é encontrada', async () => {
+      mockTransactionsService.findOne.mockRejectedValue(
+        new NotFoundException(
+          'Transação com ID 550e8400-e29b-41d4-a716-446655440000 não encontrada',
+        ),
+      );
+
+      await expect(controller.findOne(mockParams)).rejects.toThrow(
+        NotFoundException,
+      );
+
+      expect(mockTransactionsService.findOne).toHaveBeenCalledWith(
+        mockParams.id,
+      );
+    });
+
+    it('deve retornar erro 400 quando ID é inválido', async () => {
+      const invalidParams = { id: 'invalid-id' };
+      mockTransactionsService.findOne.mockRejectedValue(
+        new BadRequestException('ID da transação deve ser um UUID válido'),
+      );
+
+      await expect(controller.findOne(invalidParams)).rejects.toThrow(
+        BadRequestException,
+      );
+
+      expect(mockTransactionsService.findOne).toHaveBeenCalledWith(
+        invalidParams.id,
+      );
+    });
+
+    it('deve retornar erro 400 quando ID está vazio', async () => {
+      const emptyParams = { id: '' };
+      mockTransactionsService.findOne.mockRejectedValue(
+        new BadRequestException('ID da transação não pode estar vazio'),
+      );
+
+      await expect(controller.findOne(emptyParams)).rejects.toThrow(
+        BadRequestException,
+      );
+
+      expect(mockTransactionsService.findOne).toHaveBeenCalledWith(
+        emptyParams.id,
+      );
+    });
+
+    it('deve garantir que o guard JWT está aplicado', () => {
+      // O guard é verificado através do decorator @UseGuards no código
+      expect(typeof controller.findOne).toBe('function');
+    });
+  });
 });

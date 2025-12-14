@@ -190,23 +190,57 @@ export class TransactionsService {
   /**
    * Busca uma transação por ID
    */
-  async findOne(id: string) {
-    if (!id || typeof id !== 'string' || id.trim() === '') {
-      throw new NotFoundException('ID da transação é obrigatório');
+  async findOne(id: string): Promise<{
+    id: string;
+    senderUserId: string;
+    receiverUserId: string;
+    amount: number | string;
+    description: string | null;
+    status: string;
+    createdAt: Date;
+    updatedAt: Date;
+  }> {
+    if (!id || typeof id !== 'string') {
+      throw new BadRequestException('ID da transação deve ser uma string');
+    }
+
+    const trimmedId = id.trim();
+    if (trimmedId === '') {
+      throw new BadRequestException('ID da transação não pode estar vazio');
+    }
+
+    const uuidRegex =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(trimmedId)) {
+      throw new BadRequestException('ID da transação deve ser um UUID válido');
     }
 
     try {
       const transaction = await this.prisma.transaction.findUnique({
-        where: { id },
+        where: { id: trimmedId },
       });
 
       if (!transaction) {
-        throw new NotFoundException(`Transação com ID ${id} não encontrada`);
+        throw new NotFoundException(
+          `Transação com ID ${trimmedId} não encontrada`,
+        );
       }
 
-      return transaction;
+      return {
+        id: transaction.id,
+        senderUserId: transaction.senderUserId,
+        receiverUserId: transaction.receiverUserId,
+        amount: Number(transaction.amount),
+        description: transaction.description,
+        status: transaction.status,
+        createdAt: transaction.createdAt,
+        updatedAt: transaction.updatedAt,
+      };
     } catch (error) {
-      if (error instanceof NotFoundException) {
+      if (
+        error instanceof NotFoundException ||
+        error instanceof BadRequestException
+      ) {
         throw error;
       }
       this.logger.error('Erro ao buscar transação:', error);
