@@ -6,3 +6,4 @@ export class UserIdParamDto {
   @IsUUID()
   id: string;
 }
+
