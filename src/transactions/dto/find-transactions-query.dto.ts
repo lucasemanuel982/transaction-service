@@ -36,3 +36,4 @@ export class FindTransactionsQueryDto {
   @IsEnum(TransactionStatus)
   status?: TransactionStatus;
 }
+

@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { RabbitMQService } from './rabbitmq.service';
+import { EventValidatorService } from './event-validator.service';
 import { RABBITMQ_CONFIG } from './rabbitmq.config';
 import {
   TransactionCompletedEvent,
@@ -11,17 +12,20 @@ import { randomUUID } from 'crypto';
 export class EventPublisherService {
   private readonly logger = new Logger(EventPublisherService.name);
 
-  constructor(private readonly rabbitMQService: RabbitMQService) {}
+  constructor(
+    private readonly rabbitMQService: RabbitMQService,
+    private readonly eventValidator: EventValidatorService,
+  ) {}
 
   /**
    * Publica evento de transação concluída
    */
-  async publishTransactionCompleted(
+  publishTransactionCompleted(
     transactionId: string,
     senderUserId: string,
     receiverUserId: string,
     amount: number,
-  ): Promise<void> {
+  ): void {
     if (!this.rabbitMQService.isConnected()) {
       this.logger.warn('RabbitMQ não conectado. Evento não será publicado.');
       return;
@@ -37,14 +41,28 @@ export class EventPublisherService {
       source: 'transaction-service',
     };
 
+    if (!this.eventValidator.validateTransactionCompleted(event)) {
+      const error = new Error(
+        'Evento transaction.completed inválido. Não será publicado.',
+      );
+      this.logger.error(error.message, event);
+      throw error;
+    }
+
     try {
-      await this.rabbitMQService.publishEvent(
+      const published = this.rabbitMQService.publishEvent(
         RABBITMQ_CONFIG.ROUTING_KEYS.TRANSACTION_COMPLETED,
         event,
       );
-      this.logger.log(
-        `Evento 'transaction.completed' publicado para transação ${transactionId}`,
-      );
+      if (published) {
+        this.logger.log(
+          `Evento 'transaction.completed' publicado para transação ${transactionId}`,
+        );
+      } else {
+        throw new Error(
+          'Falha ao publicar evento transaction.completed. Buffer pode estar cheio.',
+        );
+      }
     } catch (error) {
       this.logger.error(
         'Erro ao publicar evento transaction.completed:',
@@ -57,10 +75,7 @@ export class EventPublisherService {
   /**
    * Publica evento de transação falhada
    */
-  async publishTransactionFailed(
-    transactionId: string,
-    reason: string,
-  ): Promise<void> {
+  publishTransactionFailed(transactionId: string, reason: string): void {
     if (!this.rabbitMQService.isConnected()) {
       this.logger.warn('RabbitMQ não conectado. Evento não será publicado.');
       return;
@@ -74,14 +89,28 @@ export class EventPublisherService {
       source: 'transaction-service',
     };
 
+    if (!this.eventValidator.validateTransactionFailed(event)) {
+      const error = new Error(
+        'Evento transaction.failed inválido. Não será publicado.',
+      );
+      this.logger.error(error.message, event);
+      throw error;
+    }
+
     try {
-      await this.rabbitMQService.publishEvent(
+      const published = this.rabbitMQService.publishEvent(
         RABBITMQ_CONFIG.ROUTING_KEYS.TRANSACTION_FAILED,
         event,
       );
-      this.logger.log(
-        `Evento 'transaction.failed' publicado para transação ${transactionId}`,
-      );
+      if (published) {
+        this.logger.log(
+          `Evento 'transaction.failed' publicado para transação ${transactionId}`,
+        );
+      } else {
+        throw new Error(
+          'Falha ao publicar evento transaction.failed. Buffer pode estar cheio.',
+        );
+      }
     } catch (error) {
       this.logger.error('Erro ao publicar evento transaction.failed:', error);
       throw error;

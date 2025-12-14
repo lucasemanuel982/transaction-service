@@ -26,6 +26,8 @@
     "@nestjs/platform-express": "^11.0.1",
     "@nestjs/throttler": "^6.1.1",
     "@prisma/client": "^5.20.0",
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1",
     "amqplib": "^0.10.3",
     "axios": "^1.7.7",
     "class-transformer": "^0.5.1",
