@@ -6,5 +6,3 @@ export class UserIdBalanceParamDto {
   @IsUUID()
   userId: string;
 }
-
-
