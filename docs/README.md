@@ -38,7 +38,3 @@ O Transaction Service referencia usuários do User Service através de UUIDs:
 - `transactions.receiver_user_id` → Referência externa ao User Service
 
 **Nota:** Não há foreign keys diretas no banco de dados devido à arquitetura de microsserviços. A validação de existência dos usuários deve ser feita via HTTP chamando o User Service.
-
-
-
-
