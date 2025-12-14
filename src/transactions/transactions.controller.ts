@@ -15,6 +15,7 @@ import { TransactionsService } from './transactions.service';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { TransactionIdParamDto } from './dto/transaction-id-param.dto';
 import { UserIdParamDto } from './dto/user-id-param.dto';
+import { UserIdBalanceParamDto } from './dto/user-id-balance-param.dto';
 import { FindTransactionsQueryDto } from './dto/find-transactions-query.dto';
 import { CurrentUser } from '../security/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../security/guards/jwt-auth.guard';
@@ -61,7 +62,7 @@ export class TransactionsController {
   @Get('balance/:userId')
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
-  async getBalance(@Param('userId') userId: string) {
-    return this.transactionsService.getBalance(userId);
+  async getBalance(@Param() params: UserIdBalanceParamDto) {
+    return this.transactionsService.getBalance(params.userId);
   }
 }
