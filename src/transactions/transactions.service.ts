@@ -429,6 +429,13 @@ export class TransactionsService {
       throw new BadRequestException('ID do usuário é obrigatório');
     }
 
+    const trimmedUserId = userId.trim();
+    const uuidRegex =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(trimmedUserId)) {
+      throw new BadRequestException('ID do usuário deve ser um UUID válido');
+    }
+
     try {
       const prismaWithBalance = this.prisma as unknown as {
         accountBalance: {
@@ -442,18 +449,18 @@ export class TransactionsService {
       };
 
       let accountBalance = await prismaWithBalance.accountBalance.findUnique({
-        where: { userId },
+        where: { userId: trimmedUserId },
       });
 
       if (!accountBalance) {
         accountBalance = await prismaWithBalance.accountBalance.create({
           data: {
-            userId,
+            userId: trimmedUserId,
             balance: 0,
           },
         });
         this.logger.log(
-          `Conta de saldo criada para usuário ${userId} com saldo inicial 0`,
+          `Conta de saldo criada para usuário ${trimmedUserId} com saldo inicial 0`,
         );
       }
 
