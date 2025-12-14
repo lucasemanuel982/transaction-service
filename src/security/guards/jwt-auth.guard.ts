@@ -14,6 +14,7 @@ interface AuthenticatedRequest extends Request {
   user?: {
     userId: string;
     email: string;
+    role?: string;
     jti?: string;
   };
 }
@@ -67,6 +68,7 @@ export class JwtAuthGuard implements CanActivate {
       request.user = {
         userId: payload.sub,
         email: payload.email,
+        role: payload.role || 'user',
         jti: payload.jti,
       };
       return true;

@@ -4,6 +4,7 @@ import { JwtService } from '@nestjs/jwt';
 export interface JwtPayload {
   sub: string; // userId
   email: string;
+  role?: string; // User role (user, admin, manager)
   jti?: string; // JWT ID
   iat?: number;
   exp?: number;
