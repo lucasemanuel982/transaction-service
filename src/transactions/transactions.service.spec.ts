@@ -779,7 +779,7 @@ describe('TransactionsService', () => {
   describe('getBalance', () => {
     it('deve retornar saldo do usuário', async () => {
       const mockBalance = {
-        userId: 'user-uuid',
+        userId: '550e8400-e29b-41d4-a716-446655440000',
         balance: 1000.5,
         id: 'balance-uuid',
         createdAt: new Date(),
@@ -790,20 +790,22 @@ describe('TransactionsService', () => {
         mockBalance,
       );
 
-      const result = await service.getBalance('user-uuid');
+      const result = await service.getBalance(
+        '550e8400 - e29b - 41d4 - a716 - 446655440000',
+      );
 
       expect(result).toEqual({
-        userId: 'user-uuid',
+        userId: '550e8400-e29b-41d4-a716-446655440000',
         balance: 1000.5,
       });
       expect(mockPrismaService.accountBalance.findUnique).toHaveBeenCalledWith({
-        where: { userId: 'user-uuid' },
+        where: { userId: '550e8400-e29b-41d4-a716-446655440000' },
       });
     });
 
     it('deve criar saldo com valor 0 se não existir', async () => {
       const mockCreatedBalance = {
-        userId: 'user-uuid',
+        userId: '550e8400-e29b-41d4-a716-446655440000',
         balance: 0,
         id: 'balance-uuid',
         createdAt: new Date(),
@@ -815,15 +817,17 @@ describe('TransactionsService', () => {
         mockCreatedBalance,
       );
 
-      const result = await service.getBalance('user-uuid');
+      const result = await service.getBalance(
+        '550e8400-e29b-41d4-a716-446655440000',
+      );
 
       expect(result).toEqual({
-        userId: 'user-uuid',
+        userId: '550e8400-e29b-41d4-a716-446655440000',
         balance: 0,
       });
       expect(mockPrismaService.accountBalance.create).toHaveBeenCalledWith({
         data: {
-          userId: 'user-uuid',
+          userId: '550e8400-e29b-41d4-a716-446655440000',
           balance: 0,
         },
       });

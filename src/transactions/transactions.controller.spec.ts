@@ -182,9 +182,14 @@ describe('TransactionsController', () => {
     };
 
     it('deve buscar uma transação com sucesso', async () => {
+      const currentUser = {
+        userId: 'sender-uuid',
+        email: 'sender@example.com',
+        role: 'user',
+      };
       mockTransactionsService.findOne.mockResolvedValue(mockTransaction);
 
-      const result = await controller.findOne(mockParams);
+      const result = await controller.findOne(mockParams, currentUser);
 
       expect(result).toEqual(mockTransaction);
       expect(mockTransactionsService.findOne).toHaveBeenCalledWith(
@@ -194,13 +199,18 @@ describe('TransactionsController', () => {
     });
 
     it('deve retornar erro 404 quando transação não é encontrada', async () => {
+      const currentUser = {
+        userId: 'sender-uuid',
+        email: 'sender@example.com',
+        role: 'user',
+      };
       mockTransactionsService.findOne.mockRejectedValue(
         new NotFoundException(
           'Transação com ID 550e8400-e29b-41d4-a716-446655440000 não encontrada',
         ),
       );
 
-      await expect(controller.findOne(mockParams)).rejects.toThrow(
+      await expect(controller.findOne(mockParams, currentUser)).rejects.toThrow(
         NotFoundException,
       );
 
@@ -215,9 +225,14 @@ describe('TransactionsController', () => {
         new BadRequestException('ID da transação deve ser um UUID válido'),
       );
 
-      await expect(controller.findOne(invalidParams)).rejects.toThrow(
-        BadRequestException,
-      );
+      const currentUserForInvalid = {
+        userId: 'sender-uuid',
+        email: 'sender@example.com',
+        role: 'user',
+      };
+      await expect(
+        controller.findOne(invalidParams, currentUserForInvalid),
+      ).rejects.toThrow(BadRequestException);
 
       expect(mockTransactionsService.findOne).toHaveBeenCalledWith(
         invalidParams.id,
@@ -230,9 +245,14 @@ describe('TransactionsController', () => {
         new BadRequestException('ID da transação não pode estar vazio'),
       );
 
-      await expect(controller.findOne(emptyParams)).rejects.toThrow(
-        BadRequestException,
-      );
+      const currentUserForEmpty = {
+        userId: 'sender-uuid',
+        email: 'sender@example.com',
+        role: 'user',
+      };
+      await expect(
+        controller.findOne(emptyParams, currentUserForEmpty),
+      ).rejects.toThrow(BadRequestException);
 
       expect(mockTransactionsService.findOne).toHaveBeenCalledWith(
         emptyParams.id,
@@ -248,6 +268,11 @@ describe('TransactionsController', () => {
   describe('findByUser', () => {
     const mockParams = {
       id: '550e8400-e29b-41d4-a716-446655440000',
+    };
+    const currentUser = {
+      userId: '550e8400-e29b-41d4-a716-446655440000',
+      email: 'user@example.com',
+      role: 'user',
     };
 
     const mockTransactions = [
@@ -284,13 +309,23 @@ describe('TransactionsController', () => {
     };
 
     it('deve listar transações de um usuário com sucesso', async () => {
+      // currentUser deve ter o mesmo userId que mockParams.id para passar na validação
+      const currentUserForTest = {
+        userId: '550e8400-e29b-41d4-a716-446655440000',
+        email: 'user@example.com',
+        role: 'user',
+      };
       const query: FindTransactionsQueryDto = {
         page: 1,
         limit: 10,
       };
       mockTransactionsService.findByUser.mockResolvedValue(mockResponse);
 
-      const result = await controller.findByUser(mockParams, query);
+      const result = await controller.findByUser(
+        mockParams,
+        query,
+        currentUserForTest,
+      );
 
       expect(result).toEqual(mockResponse);
       expect(mockTransactionsService.findByUser).toHaveBeenCalledWith(
@@ -306,7 +341,7 @@ describe('TransactionsController', () => {
       const query: FindTransactionsQueryDto = {};
       mockTransactionsService.findByUser.mockResolvedValue(mockResponse);
 
-      await controller.findByUser(mockParams, query);
+      await controller.findByUser(mockParams, query, currentUser);
 
       expect(mockTransactionsService.findByUser).toHaveBeenCalledWith(
         mockParams.id,
@@ -325,7 +360,7 @@ describe('TransactionsController', () => {
       };
       mockTransactionsService.findByUser.mockResolvedValue(mockResponse);
 
-      await controller.findByUser(mockParams, query);
+      await controller.findByUser(mockParams, query, currentUser);
 
       expect(mockTransactionsService.findByUser).toHaveBeenCalledWith(
         mockParams.id,
@@ -344,7 +379,7 @@ describe('TransactionsController', () => {
       };
       mockTransactionsService.findByUser.mockResolvedValue(mockResponse);
 
-      await controller.findByUser(mockParams, query);
+      await controller.findByUser(mockParams, query, currentUser);
 
       expect(mockTransactionsService.findByUser).toHaveBeenCalledWith(
         mockParams.id,
@@ -363,7 +398,7 @@ describe('TransactionsController', () => {
       };
       mockTransactionsService.findByUser.mockResolvedValue(mockResponse);
 
-      await controller.findByUser(mockParams, query);
+      await controller.findByUser(mockParams, query, currentUser);
 
       expect(mockTransactionsService.findByUser).toHaveBeenCalledWith(
         mockParams.id,
@@ -383,7 +418,7 @@ describe('TransactionsController', () => {
       };
       mockTransactionsService.findByUser.mockResolvedValue(mockResponse);
 
-      await controller.findByUser(mockParams, query);
+      await controller.findByUser(mockParams, query, currentUser);
 
       expect(mockTransactionsService.findByUser).toHaveBeenCalledWith(
         mockParams.id,
@@ -400,9 +435,9 @@ describe('TransactionsController', () => {
         new BadRequestException('ID do usuário é obrigatório'),
       );
 
-      await expect(controller.findByUser(mockParams, query)).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(
+        controller.findByUser(mockParams, query, currentUser),
+      ).rejects.toThrow(BadRequestException);
     });
 
     it('deve garantir que o guard JWT está aplicado', () => {
