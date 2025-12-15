@@ -1,98 +1,192 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Transaction Service
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+Microsserviço responsável pelo gerenciamento de transações bancárias do sistema.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## Descrição
 
-## Description
+O Transaction Service é responsável por:
+- Criação e gerenciamento de transações entre usuários
+- Consulta de transações e histórico
+- Gerenciamento de saldo de contas
+- Validação de transações
+- Integração com User Service para validação de usuários
+- Integração com Notification Service para envio de notificações
+- Publicação e consumo de eventos via RabbitMQ
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## Tecnologias
 
-## Project setup
+- NestJS 11
+- TypeScript
+- PostgreSQL (Prisma ORM)
+- RabbitMQ (mensageria)
+- JWT (autenticação)
+- Swagger/OpenAPI (documentação)
+- Axios (comunicação HTTP entre serviços)
 
-```bash
-$ npm install
-```
+## Pré-requisitos
 
-## Compile and run the project
+- Node.js 18+
+- PostgreSQL
+- RabbitMQ
+- User Service (para validação de usuários)
+- Notification Service (opcional, para notificações)
+- npm ou yarn
 
-```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
-```
-
-## Run tests
+## Instalação
 
 ```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+npm install
 ```
 
-## Deployment
+## Configuração
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+Crie um arquivo `.env` na raiz do projeto seguindo o .env.example
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+## Migrations
+
+### Aplicar migrations manualmente
 
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+psql -U postgres -d transaction_service_db -f migrations/001_initial_transaction_service.sql
+psql -U postgres -d transaction_service_db -f migrations/002_add_account_balance.sql
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+### Usar Prisma
 
-## Resources
+```bash
+# Gerar Prisma Client
+npx prisma generate
 
-Check out a few resources that may come in handy when working with NestJS:
+# Aplicar migrations
+npx prisma migrate deploy
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+# Visualizar schema no banco
+npx prisma studio
+```
 
-## Support
+## Executando o Serviço
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+### Desenvolvimento
 
-## Stay in touch
+```bash
+npm run start:dev
+```
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+### Produção
 
-## License
+```bash
+npm run build
+npm run start:prod
+```
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+### Debug
+
+```bash
+npm run start:debug
+```
+
+## Documentação da API
+
+Após iniciar o serviço, a documentação Swagger estará disponível em:
+
+```
+http://localhost:3002/api/docs
+```
+
+## Endpoints Principais
+
+### Transações
+
+- `POST /api/transactions` - Criar nova transferência entre usuários
+- `GET /api/transactions/:id` - Buscar detalhes de uma transação específica
+- `GET /api/transactions/user/:id` - Listar transações de um usuário (com paginação e filtros)
+- `GET /api/transactions/balance/:userId` - Obter saldo de um usuário
+
+## Testes
+
+### Testes unitários
+
+```bash
+npm run test
+```
+
+### Testes com cobertura
+
+```bash
+npm run test:cov
+```
+
+### Testes E2E
+
+```bash
+npm run test:e2e
+```
+
+## Segurança
+
+- Autenticação JWT obrigatória para todos os endpoints
+- Validação de entrada com class-validator
+- Helmet para proteção contra ataques comuns
+- Controle de acesso baseado em roles (admin, manager, user)
+- Usuários só podem acessar suas próprias transações (exceto admin/manager)
+
+## Integrações
+
+### User Service
+
+O Transaction Service se comunica com o User Service para:
+- Validar existência de usuários antes de criar transações
+- Verificar dados bancários dos usuários
+
+### Notification Service
+
+O Transaction Service se comunica com o Notification Service para:
+- Enviar notificações quando transações são criadas
+- Notificar sobre status de transações
+
+Mais detalhes em `docs/NOTIFICATION_SERVICE_INTEGRATION.md`.
+
+## Mensageria
+
+O serviço:
+- Publica eventos no RabbitMQ quando transações são criadas
+- Consome eventos do RabbitMQ (ex: atualizações de dados bancários)
+
+## Fluxo de Transação
+
+1. Cliente envia requisição para criar transação
+2. Serviço valida token JWT
+3. Serviço valida usuários (sender e receiver) com User Service
+4. Serviço verifica saldo do remetente
+5. Serviço cria transação no banco de dados
+6. Serviço atualiza saldos das contas
+7. Serviço publica evento no RabbitMQ
+8. Serviço envia notificação via Notification Service
+9. Retorna resposta ao cliente
+
+## Docker
+
+### Build da imagem
+
+```bash
+docker build -t transaction-service .
+```
+
+### Executar container
+
+```bash
+docker run -p 3002:3002 --env-file .env transaction-service
+```
+
+## Scripts Disponíveis
+
+- `npm run build` - Compilar o projeto
+- `npm run start` - Iniciar em modo produção
+- `npm run start:dev` - Iniciar em modo desenvolvimento com watch
+- `npm run start:debug` - Iniciar em modo debug
+- `npm run lint` - Executar linter
+- `npm run format` - Formatar código com Prettier
+- `npm run test` - Executar testes unitários
+- `npm run test:watch` - Executar testes em modo watch
+- `npm run test:cov` - Executar testes com cobertura
+- `npm run test:e2e` - Executar testes E2
