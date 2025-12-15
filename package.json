@@ -75,9 +75,39 @@
       "^.+\\.(t|j)s$": "ts-jest"
     },
     "collectCoverageFrom": [
-      "**/*.(t|j)s"
+      "**/*.(t|j)s",
+      "!**/*.spec.ts",
+      "!**/*.interface.ts",
+      "!**/main.ts",
+      "!**/*.module.ts"
     ],
     "coverageDirectory": "../coverage",
+    "coverageThreshold": {
+      "global": {
+        "branches": 80,
+        "functions": 80,
+        "lines": 80,
+        "statements": 80
+      },
+      "./clients/user-client.service.ts": {
+        "branches": 80,
+        "functions": 80,
+        "lines": 80,
+        "statements": 80
+      },
+      "./messaging/event-publisher.service.ts": {
+        "branches": 80,
+        "functions": 80,
+        "lines": 80,
+        "statements": 80
+      },
+      "./transactions/transactions.service.ts": {
+        "branches": 80,
+        "functions": 80,
+        "lines": 80,
+        "statements": 80
+      }
+    },
     "testEnvironment": "node"
   }
 }
