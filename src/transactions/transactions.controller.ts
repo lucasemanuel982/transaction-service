@@ -12,6 +12,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import type { Request } from 'express';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { TransactionsService } from './transactions.service';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { TransactionIdParamDto } from './dto/transaction-id-param.dto';
@@ -22,11 +23,17 @@ import { CurrentUser } from '../security/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../security/guards/jwt-auth.guard';
 import { RolesGuard } from '../security/guards/roles.guard';
 
+@ApiTags('Transactions')
+@ApiBearerAuth('JWT-auth')
 @Controller('api/transactions')
 export class TransactionsController {
   constructor(private readonly transactionsService: TransactionsService) {}
 
   @Post()
+  @ApiOperation({ summary: 'Criar nova transferência entre usuários' })
+  @ApiResponse({ status: 201, description: 'Transação criada com sucesso' })
+  @ApiResponse({ status: 400, description: 'Dados inválidos' })
+  @ApiResponse({ status: 401, description: 'Não autenticado' })
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.CREATED)
   async create(
@@ -39,6 +46,10 @@ export class TransactionsController {
   }
 
   @Get(':id')
+  @ApiOperation({ summary: 'Buscar detalhes de uma transação específica' })
+  @ApiResponse({ status: 200, description: 'Transação encontrada com sucesso' })
+  @ApiResponse({ status: 403, description: 'Acesso negado' })
+  @ApiResponse({ status: 404, description: 'Transação não encontrada' })
   @UseGuards(JwtAuthGuard, RolesGuard)
   @HttpCode(HttpStatus.OK)
   async findOne(
@@ -64,6 +75,9 @@ export class TransactionsController {
   }
 
   @Get('user/:id')
+  @ApiOperation({ summary: 'Listar transações de um usuário' })
+  @ApiResponse({ status: 200, description: 'Lista de transações retornada com sucesso' })
+  @ApiResponse({ status: 403, description: 'Acesso negado' })
   @UseGuards(JwtAuthGuard, RolesGuard)
   @HttpCode(HttpStatus.OK)
   async findByUser(
@@ -92,6 +106,9 @@ export class TransactionsController {
   }
 
   @Get('balance/:userId')
+  @ApiOperation({ summary: 'Obter saldo de um usuário' })
+  @ApiResponse({ status: 200, description: 'Saldo retornado com sucesso' })
+  @ApiResponse({ status: 403, description: 'Acesso negado' })
   @UseGuards(JwtAuthGuard, RolesGuard)
   @HttpCode(HttpStatus.OK)
   async getBalance(
