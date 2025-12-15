@@ -25,7 +25,7 @@ export class EventValidatorService {
 
     const schemasPath = path.join(
       __dirname,
-      '../../../../docs/schemas/event-schemas.json',
+      '../../src/schemas/event-schemas.json',
     );
     const eventSchemas = JSON.parse(fs.readFileSync(schemasPath, 'utf-8')) as {
       definitions: {

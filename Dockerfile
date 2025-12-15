@@ -38,6 +38,7 @@ RUN npm ci --only=production && npm cache clean --force
 # Copiar código compilado do builder
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/src/schemas ./src/schemas
 
 # Instalar Prisma CLI temporariamente para gerar o client
 RUN npm install prisma --no-save

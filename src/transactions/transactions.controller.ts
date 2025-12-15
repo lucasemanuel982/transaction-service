@@ -12,7 +12,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import type { Request } from 'express';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody } from '@nestjs/swagger';
 import { TransactionsService } from './transactions.service';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { TransactionIdParamDto } from './dto/transaction-id-param.dto';
@@ -31,7 +31,22 @@ export class TransactionsController {
 
   @Post()
   @ApiOperation({ summary: 'Criar nova transferência entre usuários' })
-  @ApiResponse({ status: 201, description: 'Transação criada com sucesso' })
+  @ApiBody({ type: CreateTransactionDto })
+  @ApiResponse({
+    status: 201,
+    description: 'Transação criada com sucesso',
+    schema: {
+      example: {
+        id: '789e4567-e89b-12d3-a456-426614174000',
+        senderUserId: '123e4567-e89b-12d3-a456-426614174000',
+        receiverUserId: '456e7890-e89b-12d3-a456-426614174001',
+        amount: 100.50,
+        description: 'Pagamento de serviços',
+        status: 'completed',
+        createdAt: '2025-12-15T10:30:00.000Z',
+      },
+    },
+  })
   @ApiResponse({ status: 400, description: 'Dados inválidos' })
   @ApiResponse({ status: 401, description: 'Não autenticado' })
   @UseGuards(JwtAuthGuard)
@@ -47,7 +62,21 @@ export class TransactionsController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Buscar detalhes de uma transação específica' })
-  @ApiResponse({ status: 200, description: 'Transação encontrada com sucesso' })
+  @ApiResponse({
+    status: 200,
+    description: 'Transação encontrada com sucesso',
+    schema: {
+      example: {
+        id: '789e4567-e89b-12d3-a456-426614174000',
+        senderUserId: '123e4567-e89b-12d3-a456-426614174000',
+        receiverUserId: '456e7890-e89b-12d3-a456-426614174001',
+        amount: 100.50,
+        description: 'Pagamento de serviços',
+        status: 'completed',
+        createdAt: '2025-12-15T10:30:00.000Z',
+      },
+    },
+  })
   @ApiResponse({ status: 403, description: 'Acesso negado' })
   @ApiResponse({ status: 404, description: 'Transação não encontrada' })
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -76,7 +105,28 @@ export class TransactionsController {
 
   @Get('user/:id')
   @ApiOperation({ summary: 'Listar transações de um usuário' })
-  @ApiResponse({ status: 200, description: 'Lista de transações retornada com sucesso' })
+  @ApiResponse({
+    status: 200,
+    description: 'Lista de transações retornada com sucesso',
+    schema: {
+      example: {
+        data: [
+          {
+            id: '789e4567-e89b-12d3-a456-426614174000',
+            senderUserId: '123e4567-e89b-12d3-a456-426614174000',
+            receiverUserId: '456e7890-e89b-12d3-a456-426614174001',
+            amount: 100.50,
+            description: 'Pagamento de serviços',
+            status: 'completed',
+            createdAt: '2025-12-15T10:30:00.000Z',
+          },
+        ],
+        total: 1,
+        page: 1,
+        limit: 10,
+      },
+    },
+  })
   @ApiResponse({ status: 403, description: 'Acesso negado' })
   @UseGuards(JwtAuthGuard, RolesGuard)
   @HttpCode(HttpStatus.OK)
@@ -107,7 +157,16 @@ export class TransactionsController {
 
   @Get('balance/:userId')
   @ApiOperation({ summary: 'Obter saldo de um usuário' })
-  @ApiResponse({ status: 200, description: 'Saldo retornado com sucesso' })
+  @ApiResponse({
+    status: 200,
+    description: 'Saldo retornado com sucesso',
+    schema: {
+      example: {
+        userId: '123e4567-e89b-12d3-a456-426614174000',
+        balance: 1500.75,
+      },
+    },
+  })
   @ApiResponse({ status: 403, description: 'Acesso negado' })
   @UseGuards(JwtAuthGuard, RolesGuard)
   @HttpCode(HttpStatus.OK)
