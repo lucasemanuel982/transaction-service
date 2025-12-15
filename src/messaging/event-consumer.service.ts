@@ -1,5 +1,6 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { RabbitMQService } from './rabbitmq.service';
+import { EventValidatorService } from './event-validator.service';
 import { RABBITMQ_CONFIG } from './rabbitmq.config';
 import { BankingDetailsUpdatedEvent } from './interfaces/events.interface';
 
@@ -7,13 +8,19 @@ import { BankingDetailsUpdatedEvent } from './interfaces/events.interface';
 export class EventConsumerService implements OnModuleInit {
   private readonly logger = new Logger(EventConsumerService.name);
 
-  constructor(private readonly rabbitMQService: RabbitMQService) {}
+  constructor(
+    private readonly rabbitMQService: RabbitMQService,
+    private readonly eventValidator: EventValidatorService,
+  ) {}
 
   async onModuleInit() {
     // Aguarda um pouco para garantir que o RabbitMQ está pronto
-    setTimeout(() => {
-      this.startConsumingBankingDetailsUpdated();
-    }, 2000);
+    await new Promise((resolve) => {
+      setTimeout(() => {
+        void this.startConsumingBankingDetailsUpdated();
+        resolve(undefined);
+      }, 2000);
+    });
   }
 
   /**
@@ -45,24 +52,31 @@ export class EventConsumerService implements OnModuleInit {
   /**
    * Processa evento de atualização de dados bancários
    */
-  private async handleBankingDetailsUpdated(
-    event: BankingDetailsUpdatedEvent,
-  ): Promise<void> {
+  private handleBankingDetailsUpdated(event: unknown): Promise<void> {
+    if (!this.eventValidator.validateBankingDetailsUpdated(event)) {
+      this.logger.error(
+        'Evento banking-details.updated inválido recebido. Mensagem será rejeitada.',
+        event,
+      );
+      return Promise.reject(new Error('Evento inválido'));
+    }
+
     this.logger.log(
       `Evento recebido: banking-details.updated para usuário ${event.userId}`,
     );
 
-    // Aqui você pode implementar a lógica de processamento
-    // Por exemplo, atualizar cache interno, invalidar dados, etc.
     try {
-      // TODO: Implementar lógica de processamento do evento
+      // TODO: Implementar lógica de processamento (ex: atualizar cache interno)
       this.logger.debug('Evento processado com sucesso', event);
+      return Promise.resolve();
     } catch (error) {
       this.logger.error(
         'Erro ao processar evento banking-details.updated:',
         error,
       );
-      throw error; // Rejeita a mensagem para retry
+      return Promise.reject(
+        error instanceof Error ? error : new Error(String(error)),
+      ); // Rejeita a mensagem
     }
   }
 }

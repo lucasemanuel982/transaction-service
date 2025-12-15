@@ -1,0 +1,128 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "definitions": {
+    "BankingDetailsUpdatedEvent": {
+      "type": "object",
+      "required": ["eventId", "userId", "bankingDetails", "timestamp", "source"],
+      "properties": {
+        "eventId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "UUID único do evento"
+        },
+        "userId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "ID do usuário"
+        },
+        "bankingDetails": {
+          "type": "object",
+          "required": ["agency", "account"],
+          "properties": {
+            "agency": {
+              "type": "string",
+              "pattern": "^[0-9]{4}$",
+              "description": "Agência bancária (4 dígitos)"
+            },
+            "account": {
+              "type": "string",
+              "pattern": "^[0-9]+-?[0-9]*$",
+              "description": "Conta corrente"
+            }
+          },
+          "additionalProperties": false
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO 8601 timestamp"
+        },
+        "source": {
+          "type": "string",
+          "enum": ["user-service"],
+          "description": "Serviço que publicou o evento"
+        }
+      },
+      "additionalProperties": false
+    },
+    "TransactionCompletedEvent": {
+      "type": "object",
+      "required": ["eventId", "transactionId", "senderUserId", "receiverUserId", "amount", "timestamp", "source"],
+      "properties": {
+        "eventId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "UUID único do evento"
+        },
+        "transactionId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "ID da transação"
+        },
+        "senderUserId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "ID do usuário remetente"
+        },
+        "receiverUserId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "ID do usuário destinatário"
+        },
+        "amount": {
+          "type": "number",
+          "minimum": 0.01,
+          "description": "Valor da transação"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO 8601 timestamp"
+        },
+        "source": {
+          "type": "string",
+          "enum": ["transaction-service"],
+          "description": "Serviço que publicou o evento"
+        }
+      },
+      "additionalProperties": false
+    },
+    "TransactionFailedEvent": {
+      "type": "object",
+      "required": ["eventId", "transactionId", "reason", "timestamp", "source"],
+      "properties": {
+        "eventId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "UUID único do evento"
+        },
+        "transactionId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "ID da transação (se disponível)"
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500,
+          "description": "Motivo da falha"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO 8601 timestamp"
+        },
+        "source": {
+          "type": "string",
+          "enum": ["transaction-service"],
+          "description": "Serviço que publicou o evento"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}
+
+
+
+

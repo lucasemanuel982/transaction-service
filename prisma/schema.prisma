@@ -10,9 +10,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ============================================
 // TABELA: Transaction
-// ============================================
 // Armazena transações/transferências entre usuários
 model Transaction {
   id             String   @id @default(uuid())
@@ -35,9 +33,20 @@ model Transaction {
   @@map("transactions")
 }
 
-// ============================================
+// TABELA: AccountBalance
+// Armazena saldo das contas dos usuários (sincronizado com User Service)
+model AccountBalance {
+  id        String   @id @default(uuid())
+  userId    String   @unique @map("user_id") @db.Uuid
+  balance   Decimal  @default(0) @db.Decimal(15, 2) // Saldo atual
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([userId])
+  @@map("account_balances")
+}
+
 // TABELA: AuditLog
-// ============================================
 // Armazena logs de auditoria de ações realizadas nas transações
 model AuditLog {
   id            String   @id @default(uuid())
@@ -64,5 +73,3 @@ model AuditLog {
   @@index([correlationId])
   @@map("audit_logs")
 }
-
-
